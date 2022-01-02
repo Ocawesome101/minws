@@ -5,7 +5,7 @@
 local socket = require("socket")
 local fork = require("fork")
 local server = socket.tcp()
-assert(server:bind("0.0.0.0", 80))
+assert(server:bind("0.0.0.0", tonumber((...)) or 80))
 server:listen()
 
 while true do
@@ -30,11 +30,17 @@ while true do
     conn:send("got " .. rt .. ", " .. pt .. "\r\n")
   elseif rt == "POST" then
     if reqfields["Content-Type"] == "application/x-www-form-urlencoded" then
-      local postdata = conn:receive("*l")
+      print("RECIEVE POST DATA")
+      local postdata = ""
+      while conn:dirty() do
+        postdata = postdata .. conn:receive(1)
+      end
       print("POST", postdata)
       if postdata == "shutdown=1" then
         break
       end
+    else
+      print("bad POST Content-Type: " .. (reqfields["Content-Type"] or "unknown"))
     end
   end
   conn:close()
