@@ -35,24 +35,24 @@ while true do
   until data == ""
   local rt, pt = reqfields.data:match("^([A-Z]+) ([^ ]+)")
   print(rt, pt)
-  if rt == "GET" then
-    conn:send("got " .. rt .. ", " .. pt .. "\r\n")
-    conn:close()
-  elseif rt == "POST" then
-    if reqfields["Content-Type"] == "application/x-www-form-urlencoded" then
-      print("RECIEVE POST DATA")
-      local postdata = ""
-      while conn:dirty() do
-        postdata = postdata .. conn:receive(1)
-      end
-      print("POST", postdata)
-      if postdata == "shutdown=1" then
-        break
-      else
-        -- do this here *before forking* to avoid collisions
-        local tmpfname = tostring(math.random(1, 999999))
-        local pid = fork.fork()
-        if pid == 0 then -- child process
+  -- do this here *before forking* to avoid collisions
+  local tmpfname = tostring(math.random(1, 999999))
+  local pid = 0-- fork.fork()
+  if pid == 0 then -- child process
+    if rt == "GET" then
+      conn:send("got " .. rt .. ", " .. pt .. "\r\n")
+    elseif rt == "POST" then
+      if reqfields["Content-Type"] == "application/x-www-form-urlencoded" then
+        print("RECIEVE POST DATA")
+        local postdata = ""
+        while conn:dirty() do
+          postdata = postdata .. conn:receive(1)
+        end
+        print("POST", postdata)
+        if postdata == "shutdown=1" then
+          server:close()
+          break
+        else
           local lines = {}
           for field in postdata:gmatch("[^%?&]") do
             lines[#lines+1] = field .. "\n"
@@ -69,20 +69,18 @@ while true do
             input:close()
             os.remove("/tmp/"..tmpfname)
             conn:send(data)
-            conn:close()
           end
-        elseif pid == -1 then
-          print("\27[97;101mfailed creating child process!\27[39;49m")
-          conn:close()
-        else
-          print("forked child process " .. pid)
         end
       end
     else
       print("bad POST Content-Type: " .. (reqfields["Content-Type"] or "unknown"))
-      conn:close()
     end
+    conn:close()
+    os.exit()
+  elseif pid == -1 then
+    print("\27[97;101mfailed creating child process!\27[39;49m")
+    conn:close()
+  else
+    print("forked child process " .. pid)
   end
 end
-
-server:close()
