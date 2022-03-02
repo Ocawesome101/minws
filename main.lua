@@ -10,8 +10,6 @@
   -- response data is read from the handler's standard output.
 
 local socket = require("socket")
-local url = require("socket.url")
-local fork = require("fork")
 local server = socket.tcp()
 assert(server:bind("0.0.0.0", tonumber((...)) or 80))
 server:listen()
@@ -21,7 +19,6 @@ while true do
   print("A")
   local conn = assert(server:accept())
   local reqfields = {data = ""}
-  local l0 = true
   repeat
     local data = conn:receive("*l")
     if #data > 0 then
